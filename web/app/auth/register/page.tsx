@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signInWithGoogle } from "@/lib/firebase/auth";
+import { registerWithEmailPassword, signInWithGoogle } from "@/lib/firebase/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingEmail, setLoadingEmail] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   async function handleGoogleSignUp() {
@@ -24,6 +30,37 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleEmailSignUp(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (!acceptedTerms) {
+      setAuthError("Please accept Terms and Privacy Policy.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setAuthError("Password should be at least 6 characters.");
+      return;
+    }
+
+    setLoadingEmail(true);
+
+    try {
+      await registerWithEmailPassword(email.trim(), password, name.trim());
+      router.push("/auth/onboarding");
+    } catch {
+      setAuthError("Email sign-up failed. Please try a different email.");
+    } finally {
+      setLoadingEmail(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-md rounded-2xl border border-[#2a2b2e] bg-[#161719] p-6 shadow-2xl">
       <h1 className="text-2xl font-semibold text-[#f4f4f5]">Create your account</h1>
@@ -32,7 +69,7 @@ export default function RegisterPage() {
       <button
         type="button"
         onClick={handleGoogleSignUp}
-        disabled={loadingGoogle}
+        disabled={loadingGoogle || loadingEmail}
         className="mt-5 w-full rounded-lg border border-[#2a2b2e] bg-[#121316] px-4 py-2 text-sm text-[#f4f4f5] disabled:opacity-60"
       >
         {loadingGoogle ? "Connecting..." : "Sign up with Google"}
@@ -46,19 +83,19 @@ export default function RegisterPage() {
         <span className="h-px flex-1 bg-[#2a2b2e]" />
       </div>
 
-      <form className="space-y-3">
-        <input className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Full Name" />
-        <input className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Email" />
-        <input type="password" className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Password" />
+      <form className="space-y-3" onSubmit={handleEmailSignUp}>
+        <input className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <input className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input type="password" className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         <div className="grid grid-cols-4 gap-1">
           <span className="h-1 rounded bg-[#ef4444]" />
           <span className="h-1 rounded bg-[#f59e0b]" />
           <span className="h-1 rounded bg-[#3b82f6]" />
           <span className="h-1 rounded bg-[#22c55e]" />
         </div>
-        <input type="password" className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Confirm Password" />
-        <label className="flex items-center gap-2 text-xs text-[#9ca3af]"><input type="checkbox" /> I agree to Terms and Privacy Policy</label>
-        <button type="button" className="w-full rounded-lg bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#0e0f11]">Create Account</button>
+        <input type="password" className="w-full rounded-lg border border-[#2a2b2e] bg-[#101114] px-3 py-2 text-sm" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+        <label className="flex items-center gap-2 text-xs text-[#9ca3af]"><input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} /> I agree to Terms and Privacy Policy</label>
+        <button type="submit" disabled={loadingGoogle || loadingEmail} className="w-full rounded-lg bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#0e0f11] disabled:opacity-60">{loadingEmail ? "Creating..." : "Create Account"}</button>
       </form>
 
       <p className="mt-4 text-sm text-[#9ca3af]">

@@ -1,17 +1,31 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Panel } from "@/components/ui/shell";
+import { getLessons, type Lesson } from "@/lib/firebase/dashboard-data";
 
-type Props = { params: Promise<{ moduleId: string; lessonId: string }> };
+export default function LessonPage() {
+  const params = useParams<{ moduleId: string; lessonId: string }>();
+  const [lesson, setLesson] = useState<Lesson | null>(null);
 
-export default async function LessonPage({ params }: Props) {
-  const { moduleId, lessonId } = await params;
+  useEffect(() => {
+    async function loadLesson() {
+      const lessons = await getLessons(params.moduleId);
+      setLesson(lessons.find((item) => item.id === params.lessonId) || lessons[0] || null);
+    }
+
+    void loadLesson();
+  }, [params.lessonId, params.moduleId]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr]">
       <div className="space-y-4">
-        <p className="text-sm text-[#9ca3af]"><Link href={`/dashboard/learn/${moduleId}`}>Module</Link> / {lessonId}</p>
-        <Panel title={lessonId.replace(/-/g, " ")} subtitle="8 min read">
+        <p className="text-sm text-[#9ca3af]"><Link href={`/dashboard/learn/${params.moduleId}`}>Module</Link> / {params.lessonId}</p>
+        <Panel title={(lesson?.title || params.lessonId).replace(/-/g, " ")} subtitle={`${Math.max(1, Math.round((lesson?.readTimeSec || 60) / 60))} min read`}>
           <div className="space-y-3 text-sm text-[#d1d5db]">
-            <p>Salary slips include gross pay, deductions, and net pay. Understanding each section helps plan taxes and savings better.</p>
+            <p>{lesson?.content || "Lesson content not available yet."}</p>
             <div className="rounded-lg border border-[#2a2b2e] bg-[#111216] p-3"><p className="font-medium">Key formula</p><p className="font-mono">Net Pay = Gross Pay - Deductions</p></div>
             <p>Track PF, professional tax, and TDS deductions monthly to avoid surprises at year end.</p>
           </div>

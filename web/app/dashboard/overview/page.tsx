@@ -1,20 +1,78 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Panel, Pill } from "@/components/ui/shell";
+import {
+  getLatestMonthlySummary,
+  getRecentTransactions,
+  getUserProfile,
+  type MonthlySummary,
+  type Transaction,
+  type UserProfile,
+} from "@/lib/firebase/dashboard-data";
+import { useUserId } from "@/lib/firebase/use-user-id";
 
-const stats = [
-  { label: "TOTAL SPENDINGS", value: "₹28,450", delta: "-12%", tone: "red" as const },
-  { label: "SAVINGS", value: "₹2,512.40", delta: "-2%", tone: "amber" as const },
-  { label: "INVESTMENTS", value: "₹1,215.25", delta: "+6%", tone: "green" as const },
-];
+function toCurrency(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-const tx = [
-  ["TODAY", "Swiggy", "Food", "-₹420"],
-  ["TODAY", "Salary", "Income", "+₹42,000"],
-  ["YESTERDAY", "Uber", "Transport", "-₹280"],
-  ["JUL 18", "Amazon", "Shopping", "-₹1,140"],
-];
+function txnLabel(tx: Transaction) {
+  return tx.merchantName || tx.title || "Transaction";
+}
 
 export default function DashboardOverviewPage() {
+  const userId = useUserId();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [summary, setSummary] = useState<MonthlySummary | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    async function loadOverview() {
+      const [profileData, summaryData, txData] = await Promise.all([
+        getUserProfile(userId),
+        getLatestMonthlySummary(userId),
+        getRecentTransactions(userId, 6),
+      ]);
+
+      setProfile(profileData);
+      setSummary(summaryData);
+      setTransactions(txData);
+    }
+
+    void loadOverview();
+  }, [userId]);
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "TOTAL SPENDINGS",
+        value: toCurrency(summary?.totalExpense ?? profile?.currentMonthSpent ?? 0),
+        delta: "Live",
+        tone: "red" as const,
+      },
+      {
+        label: "SAVINGS",
+        value: toCurrency(summary?.totalSavings ?? profile?.totalSavings ?? 0),
+        delta: "Live",
+        tone: "amber" as const,
+      },
+      {
+        label: "BUDGET",
+        value: toCurrency(summary?.budgetAmount ?? profile?.currentMonthBudget ?? 0),
+        delta: "This Month",
+        tone: "green" as const,
+      },
+    ],
+    [profile, summary],
+  );
+
+  const breakdown = summary?.categoryBreakdown ? Object.entries(summary.categoryBreakdown) : [];
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-3">
@@ -33,30 +91,44 @@ export default function DashboardOverviewPage() {
       <section className="grid gap-4 lg:grid-cols-[0.4fr_0.6fr]">
         <Panel title="Transactions" subtitle="Recent activity" right={<Link href="/dashboard/transactions" className="text-xs text-[#4ade80]">View all</Link>}>
           <div className="space-y-2">
-            {tx.map(([day, merchant, cat, amount], idx) => (
-              <div key={idx} className="flex items-center justify-between rounded-lg border border-[#2a2b2e] bg-[#111216] px-3 py-2">
+            {transactions.map((item) => {
+              const amount = `${item.type === "expense" ? "-" : "+"}${toCurrency(item.amount)}`;
+              const day = item.date
+                ? item.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }).toUpperCase()
+                : "DATE N/A";
+
+              return (
+                <div key={item.id} className="flex items-center justify-between rounded-lg border border-[#2a2b2e] bg-[#111216] px-3 py-2">
                 <div>
-                  <p className="text-sm font-medium">{merchant}</p>
-                  <p className="text-xs text-[#6b7280]">{day} • {cat}</p>
+                  <p className="text-sm font-medium">{txnLabel(item)}</p>
+                  <p className="text-xs text-[#6b7280]">{day} • {(item.category || item.type).toUpperCase()}</p>
                 </div>
                 <span className={`font-mono text-sm ${amount.startsWith("+") ? "text-[#4ade80]" : "text-[#f87171]"}`}>{amount}</span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </Panel>
 
-        <Panel title="₹9,340.80 Spent" subtitle="Year view">
+        <Panel title={`${toCurrency(summary?.totalExpense ?? 0)} Spent`} subtitle={summary?.month ? `${summary.month} view` : "Current month"}>
           <div className="grid h-56 grid-cols-7 items-end gap-2">
-            {[120, 90, 150, 130, 110, 160, 140].map((h, i) => (
+            {(breakdown.length > 0 ? breakdown.slice(0, 7).map(([, value]) => Math.max(24, Math.min(180, Math.round(value / 120)))) : [120, 90, 150, 130, 110, 160, 140]).map((h, i) => (
               <div key={i} className="rounded-t-md bg-gradient-to-t from-[#2563eb] via-[#7c3aed] to-[#db2777]" style={{ height: `${h}px` }} />
             ))}
           </div>
-          <p className="mt-3 text-xs text-[#9ca3af]">Expenses • Transfers • Subscriptions • Grocery • Shopping</p>
+          <p className="mt-3 text-xs text-[#9ca3af]">
+            {breakdown.length > 0
+              ? breakdown
+                  .slice(0, 5)
+                  .map(([name]) => name)
+                  .join(" • ")
+              : "Expenses • Transfers • Subscriptions • Grocery • Shopping"}
+          </p>
         </Panel>
       </section>
 
       <Panel title="Your spending insight">
-        <p className="text-sm text-[#d1d5db]">You spent 23% more on dining this month. Cooking at home two more days weekly can save about ₹1,800.</p>
+        <p className="text-sm text-[#d1d5db]">{summary?.aiInsightSummary || "AI insight will appear here after enough transaction activity in this month."}</p>
       </Panel>
     </div>
   );
