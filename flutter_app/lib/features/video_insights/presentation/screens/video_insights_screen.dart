@@ -1,14 +1,21 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../domain/entities/video_insight.dart';
+import '../providers/video_insights_provider.dart';
 
-class VideoInsightsScreen extends StatelessWidget {
+class VideoInsightsScreen extends ConsumerWidget {
   const VideoInsightsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<VideoInsight>> insights = ref.watch(
+      videoInsightsProvider,
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Video Insights')),
@@ -29,41 +36,60 @@ class VideoInsightsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(onPressed: () {}, child: const Text('Analyze')),
+              ElevatedButton(onPressed: null, child: const Text('Analyze')),
             ],
           ),
           const SizedBox(height: 18),
           const Text('Previously Analyzed', style: AppTextStyles.titleLarge),
           const SizedBox(height: 10),
-          ...List<Widget>.generate(3, (int i) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-              ),
-              child: const ListTile(
-                leading: SizedBox(
-                  width: 54,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(color: AppColors.surfaceElevated),
-                    child: Icon(
-                      Icons.play_circle_fill,
-                      color: AppColors.accentGold,
+          ...insights.when(
+            data: (List<VideoInsight> items) {
+              if (items.isEmpty) {
+                return const <Widget>[
+                  Text(
+                    'No analyzed videos yet.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ];
+              }
+
+              return items.map((VideoInsight insight) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                  ),
+                  child: ListTile(
+                    leading: const SizedBox(
+                      width: 54,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated,
+                        ),
+                        child: Icon(
+                          Icons.play_circle_fill,
+                          color: AppColors.accentGold,
+                        ),
+                      ),
+                    ),
+                    title: Text(insight.title, style: AppTextStyles.titleLarge),
+                    subtitle: Text(
+                      '${insight.channelName} • ${(insight.relevanceScore * 100).round()}% relevant',
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ),
-                ),
-                title: Text(
-                  'How to Build an Emergency Fund',
-                  style: AppTextStyles.titleLarge,
-                ),
-                subtitle: Text(
-                  'Finance Today • 92% relevant',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
+                );
+              }).toList();
+            },
+            loading: () => const <Widget>[CircularProgressIndicator()],
+            error: (Object error, StackTrace stackTrace) => const <Widget>[
+              Text(
+                'Could not load video insights right now.',
+                style: TextStyle(color: AppColors.textSecondary),
               ),
-            );
-          }),
+            ],
+          ),
         ],
       ),
     );

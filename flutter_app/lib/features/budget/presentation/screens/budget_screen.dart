@@ -1,180 +1,134 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/theme/app_text_styles.dart';
+import '../../../../shared/widgets/finwise_advanced_widgets.dart';
+import '../../domain/entities/budget_entity.dart';
+import '../providers/budget_provider.dart';
 
-class BudgetScreen extends StatelessWidget {
+class BudgetScreen extends ConsumerStatefulWidget {
   const BudgetScreen({super.key});
 
   @override
+  ConsumerState<BudgetScreen> createState() => _BudgetScreenState();
+}
+
+class _BudgetScreenState extends ConsumerState<BudgetScreen> {
+  bool _loading = false;
+  int? _expandedIndex;
+  final DateTime _currentMonth = DateTime.now();
+
+  String get _monthKey => DateFormat('yyyy-MM').format(_currentMonth);
+
+  @override
   Widget build(BuildContext context) {
+    final AsyncValue<BudgetEntity?> budget = ref.watch(
+      currentBudgetProvider(_monthKey),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Budget'),
-        actions: const <Widget>[
+        actions: <Widget>[
           Padding(
-            padding: EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
-                'October 2024',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                DateFormat('MMMM yyyy').format(_currentMonth),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppDimensions.paddingM),
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.paddingL),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  '₹13,425 remaining',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  '₹24,575 spent of ₹38,000 budget',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(99)),
-                  child: LinearProgressIndicator(
-                    value: 0.65,
-                    minHeight: 10,
-                    backgroundColor: AppColors.surfaceElevated,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.paddingM),
-            decoration: BoxDecoration(
-              color: const Color(0x261A1433),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Row(
-              children: <Widget>[
-                Icon(Icons.auto_awesome, color: AppColors.accentPurple),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Generate AI Budget',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Icon(Icons.chevron_right, color: AppColors.textSecondary),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...List<Widget>.generate(8, (int i) {
-            final List<String> categories = <String>[
-              'Food',
-              'Transport',
-              'Shopping',
-              'Health',
-              'Bills',
-              'Education',
-              'Entertainment',
-              'Savings',
-            ];
-            final List<double> values = <double>[
-              0.88,
-              0.43,
-              0.66,
-              0.31,
-              0.55,
-              0.22,
-              0.37,
-              0.48,
-            ];
-            final List<Color> colors = <Color>[
-              AppColors.accentGold,
-              AppColors.accentBlue,
-              AppColors.accentCoral,
-              AppColors.primary,
-              AppColors.warning,
-              AppColors.accentPurple,
-              AppColors.accentBlue,
-              AppColors.primary,
-            ];
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(AppDimensions.paddingM),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-              ),
-              child: Row(
-                children: <Widget>[
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: colors[i].withValues(alpha: 0.16),
-                    child: Text(
-                      categories[i].substring(0, 1),
-                      style: TextStyle(color: colors[i]),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(categories[i], style: AppTextStyles.bodyLarge),
-                        const SizedBox(height: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
-                          child: LinearProgressIndicator(
-                            value: values[i],
-                            minHeight: 8,
-                            backgroundColor: AppColors.surfaceElevated,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              colors[i],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    '₹3,200 / ₹5,000',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+      body: budget.when(
+        data: (BudgetEntity? data) {
+          if (data == null) {
+            return const Center(
+              child: Text(
+                'No budget found for this month.',
+                style: TextStyle(color: AppColors.textSecondary),
               ),
             );
-          }),
-        ],
+          }
+
+          final List<String> categories = data.categoryLimits.keys.toList();
+          const List<Color> colors = <Color>[
+            AppColors.accentGold,
+            AppColors.accentBlue,
+            AppColors.accentCoral,
+            AppColors.primary,
+            AppColors.warning,
+            AppColors.accentPurple,
+            AppColors.accentBlue,
+            AppColors.primary,
+          ];
+
+          return ListView(
+            padding: const EdgeInsets.all(AppDimensions.paddingM),
+            children: <Widget>[
+              BudgetProgressRing(spent: data.spent, budget: data.total),
+              const SizedBox(height: 16),
+              AiBudgetButton(
+                isLoading: _loading,
+                onPressed: () => setState(() => _loading = true),
+              ),
+              const SizedBox(height: 16),
+              if (categories.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'No category budgets available.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                )
+              else
+                ...List<Widget>.generate(categories.length, (int i) {
+                  final String category = categories[i];
+                  final double limit = data.categoryLimits[category] ?? 0;
+                  final double spent = data.categorySpent[category] ?? 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: CategoryBudgetBar(
+                      category: category,
+                      spent: spent,
+                      limit: limit,
+                      color: colors[i % colors.length],
+                      expanded: _expandedIndex == i,
+                      onTap: () => setState(
+                        () => _expandedIndex = _expandedIndex == i ? null : i,
+                      ),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 8),
+              BudgetReasoningTile(reasoning: data.aiInsightSummary),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (Object error, StackTrace stackTrace) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingL),
+            child: Text(_friendlyError(error)),
+          ),
+        ),
       ),
     );
+  }
+
+  String _friendlyError(Object error) {
+    final String message = error.toString();
+    if (message.contains('failed-precondition') ||
+        message.contains('Setting up budget data')) {
+      return 'Setting up budget data... please wait';
+    }
+    return 'Could not load budget right now.';
   }
 }

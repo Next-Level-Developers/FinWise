@@ -14,7 +14,9 @@ import '../../features/goals/presentation/screens/create_goal_screen.dart';
 import '../../features/goals/presentation/screens/goal_detail_screen.dart';
 import '../../features/goals/presentation/screens/goals_screen.dart';
 import '../../features/learn/presentation/screens/learn_hub_screen.dart';
+import '../../features/learn/presentation/screens/lesson_reader_screen.dart';
 import '../../features/learn/presentation/screens/module_detail_screen.dart';
+import '../../features/learn/presentation/screens/quiz_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_shell_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
@@ -100,7 +102,9 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: ':id',
               builder: (BuildContext context, GoRouterState state) =>
-                  const BudgetDetailScreen(),
+                  BudgetDetailScreen(
+                    category: state.pathParameters['id'] ?? 'food',
+                  ),
             ),
           ],
         ),
@@ -117,7 +121,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: ':id',
               builder: (BuildContext context, GoRouterState state) =>
-                  const GoalDetailScreen(),
+                  GoalDetailScreen(goalId: state.pathParameters['id'] ?? ''),
             ),
           ],
         ),
@@ -129,7 +133,26 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: ':moduleId',
               builder: (BuildContext context, GoRouterState state) =>
-                  const ModuleDetailScreen(),
+                  ModuleDetailScreen(
+                    moduleId: state.pathParameters['moduleId'] ?? '',
+                  ),
+              routes: <RouteBase>[
+                GoRoute(
+                  path: 'lesson/:lessonId',
+                  builder: (BuildContext context, GoRouterState state) =>
+                      LessonReaderScreen(
+                        moduleId: state.pathParameters['moduleId'] ?? '',
+                        lessonId: state.pathParameters['lessonId'] ?? '',
+                      ),
+                ),
+                GoRoute(
+                  path: 'quiz',
+                  builder: (BuildContext context, GoRouterState state) =>
+                      QuizScreen(
+                        moduleId: state.pathParameters['moduleId'] ?? '',
+                      ),
+                ),
+              ],
             ),
           ],
         ),

@@ -6,7 +6,7 @@ class SignUpWithEmail {
 
   final AuthRepository _repository;
 
-  Future<UserEntity?> call(String name, String email, String password) {
-    return _repository.signUpWithEmail(name, email, password);
+  Future<UserEntity?> call(String email, String password) {
+    return _repository.signUpWithEmail(email, password);
   }
 }

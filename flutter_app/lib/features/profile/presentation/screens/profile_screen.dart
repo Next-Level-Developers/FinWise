@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../domain/entities/profile_info.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/profile_avatar_section.dart';
 import '../widgets/profile_info_card.dart';
@@ -13,14 +17,14 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<dynamic> profile = ref.watch(profileInfoProvider);
+    final AsyncValue<ProfileInfo> profile = ref.watch(profileInfoProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Profile')),
       body: SafeArea(
         child: profile.when(
-          data: (dynamic data) => SingleChildScrollView(
+          data: (ProfileInfo data) => SingleChildScrollView(
             padding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.paddingL,
             ),
@@ -36,38 +40,38 @@ class ProfileScreen extends ConsumerWidget {
                     ProfileField(
                       icon: Icons.person_outline_rounded,
                       label: 'Name',
-                      value: data.name as String,
+                      value: data.name,
                     ),
                     ProfileField(
                       icon: Icons.email_outlined,
                       label: 'E-mail',
-                      value: data.email as String,
+                      value: data.email,
                     ),
                     ProfileField(
                       icon: Icons.phone_outlined,
                       label: 'Phone number',
-                      value: data.phone as String,
+                      value: data.phone,
                     ),
                     ProfileField(
                       icon: Icons.home_outlined,
                       label: 'Home address',
-                      value: data.address as String,
+                      value: data.address,
                     ),
                   ],
                 ),
                 const SizedBox(height: AppDimensions.paddingM),
-                const ProfileInfoCard(
+                ProfileInfoCard(
                   sectionTitle: 'Account info',
                   fields: <ProfileField>[
                     ProfileField(
                       icon: Icons.badge_outlined,
                       label: 'Account type',
-                      value: 'FinWise Pro',
+                      value: data.accountType,
                     ),
                     ProfileField(
                       icon: Icons.calendar_today_outlined,
                       label: 'Member since',
-                      value: 'January 2024',
+                      value: data.memberSince,
                     ),
                   ],
                 ),
@@ -79,29 +83,36 @@ class ProfileScreen extends ConsumerWidget {
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
+                      const Text(
                         'Your Scheme Eligibility',
                         style: AppTextStyles.titleLarge,
                       ),
-                      SizedBox(height: 10),
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: <Widget>[
-                          Chip(label: Text('Salaried')),
-                          Chip(label: Text('Tax Saver')),
-                          Chip(label: Text('Emergency Fund')),
-                        ],
+                        children: data.eligibilityTags.isEmpty
+                            ? const <Widget>[Chip(label: Text('No tags yet'))]
+                            : data.eligibilityTags
+                                  .map<Widget>(
+                                    (String tag) => Chip(label: Text(tag)),
+                                  )
+                                  .toList(),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppDimensions.paddingM),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    if (context.mounted) {
+                      context.go(AppRoutes.login);
+                    }
+                  },
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 52),
                     side: const BorderSide(color: AppColors.error),

@@ -1,10 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../domain/entities/transaction_entity.dart';
+import '../providers/transactions_provider.dart';
 
-class OcrScanScreen extends StatelessWidget {
+class OcrScanScreen extends ConsumerStatefulWidget {
   const OcrScanScreen({super.key});
+
+  @override
+  ConsumerState<OcrScanScreen> createState() => _OcrScanScreenState();
+}
+
+class _OcrScanScreenState extends ConsumerState<OcrScanScreen> {
+  bool _saving = false;
+
+  Future<void> _saveExtractedTransaction() async {
+    if (_saving) {
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final TransactionEntity tx = TransactionEntity(
+        id: '',
+        title: 'Cafe Bistro',
+        amount: 280,
+        datetime: DateTime.now(),
+        isDebit: true,
+        category: 'food',
+        source: 'ocr_scan',
+        paymentMethod: 'upi',
+      );
+      await ref.read(addTransactionUseCaseProvider).call(tx);
+      if (!mounted) {
+        return;
+      }
+      context.pop(true);
+    } catch (error) {
+      final String message =
+          error.toString().contains('Setting up transactions data')
+          ? 'Setting up transactions data… please wait'
+          : 'Unable to save transaction right now.';
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +137,14 @@ class OcrScanScreen extends StatelessWidget {
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _saveExtractedTransaction,
+                    child: Text(_saving ? 'Saving...' : 'Confirm & Save'),
                   ),
                 ),
               ],

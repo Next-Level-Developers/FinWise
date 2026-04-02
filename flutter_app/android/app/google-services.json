@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "392760923093",
+    "project_id": "finwise-ea77d",
+    "storage_bucket": "finwise-ea77d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:392760923093:android:e4dbc514b69523e741635c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "392760923093-2bbj1lds8l5uriv2ubn713sok7rm5tke.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmfbQpP3rTig5XxmdbR37_Eqrq2iTl5u4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "392760923093-2bbj1lds8l5uriv2ubn713sok7rm5tke.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "392760923093-36bij9qrr4m6ojbstf7khmh1jqfb4ikp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

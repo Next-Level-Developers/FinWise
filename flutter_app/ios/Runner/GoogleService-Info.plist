@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyC39J9ptvIWdyKLoXgfE0Gvd7u_eZTp-TU</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.flutterApp</string>
+	<key>CLIENT_ID</key>
+	<string>392760923093-36bij9qrr4m6ojbstf7khmh1jqfb4ikp.apps.googleusercontent.com</string>
+	<key>GCM_SENDER_ID</key>
+	<string>392760923093</string>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:392760923093:ios:cbe656b34bca60c141635c</string>
+	<key>PROJECT_ID</key>
+	<string>finwise-ea77d</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.392760923093-36bij9qrr4m6ojbstf7khmh1jqfb4ikp</string>
+	<key>STORAGE_BUCKET</key>
+	<string>finwise-ea77d.firebasestorage.app</string>
+</dict>
+</plist>

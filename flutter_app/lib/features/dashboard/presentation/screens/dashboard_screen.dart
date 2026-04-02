@@ -6,10 +6,12 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/dashboard_summary.dart';
+import '../../../goals/domain/entities/goal_entity.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/greeting_header.dart';
 import '../widgets/monthly_spend_card.dart';
 import '../widgets/recent_transactions_list.dart';
+import '../../../../shared/widgets/finwise_advanced_widgets.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -54,6 +56,18 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.paddingL,
+                    ),
+                    child: BudgetProgressRing(
+                      spent: data.spent,
+                      budget: data.budget,
+                    ),
+                  ),
+                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 SliverToBoxAdapter(
                   child: Padding(
@@ -63,16 +77,20 @@ class DashboardScreen extends ConsumerWidget {
                     child: _CategoryBreakdownCard(
                       totalSpentLabel: spentLabel,
                       totalBudgetLabel: budgetLabel,
+                      breakdown: data.categoryBreakdown,
                     ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                const SliverToBoxAdapter(
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: AppDimensions.paddingL,
                     ),
-                    child: _AiInsightCard(),
+                    child: DashboardInsightCard(
+                      summary:
+                          'Food and transport are driving most of this month\'s spend. A small routine change could free up room for your goals without feeling restrictive.',
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -85,12 +103,12 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: AppDimensions.paddingL,
                     ),
-                    child: _GoalSnapshotCard(),
+                    child: _GoalSnapshotCard(goals: data.goals),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -99,11 +117,18 @@ class DashboardScreen extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(
                       horizontal: AppDimensions.paddingL,
                     ),
-                    child: _ForecastCard(),
+                    child: NextMonthForecastCard(
+                      predictedSpend: 26900,
+                      confidence: 84,
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(child: RecentTransactionsList()),
+                SliverToBoxAdapter(
+                  child: RecentTransactionsList(
+                    transactions: data.recentTransactions,
+                  ),
+                ),
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
@@ -112,7 +137,10 @@ class DashboardScreen extends ConsumerWidget {
                       AppDimensions.paddingL,
                       0,
                     ),
-                    child: _DailyTipBanner(),
+                    child: DailyTipBanner(
+                      tip:
+                          'Try setting one weekly spending cap for food delivery. Small rules make budgets easier to keep.',
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -136,19 +164,41 @@ class _CategoryBreakdownCard extends StatelessWidget {
   const _CategoryBreakdownCard({
     required this.totalSpentLabel,
     required this.totalBudgetLabel,
+    required this.breakdown,
   });
 
   final String totalSpentLabel;
   final String totalBudgetLabel;
+  final Map<String, double> breakdown;
 
   @override
   Widget build(BuildContext context) {
-    const List<_BarData> bars = <_BarData>[
-      _BarData(label: 'Food', value: 0.85, color: AppColors.accentGold),
-      _BarData(label: 'Transport', value: 0.45, color: AppColors.accentBlue),
-      _BarData(label: 'Shopping', value: 0.65, color: AppColors.accentPurple),
-      _BarData(label: 'Health', value: 0.30, color: AppColors.primary),
+    const List<Color> palette = <Color>[
+      AppColors.accentGold,
+      AppColors.accentBlue,
+      AppColors.accentPurple,
+      AppColors.primary,
+      AppColors.accentCoral,
     ];
+
+    final double total = breakdown.values.fold(
+      0.0,
+      (double a, double b) => a + b,
+    );
+
+    final List<_BarData> bars = breakdown.entries.toList().asMap().entries.map((
+      MapEntry<int, MapEntry<String, double>> entry,
+    ) {
+      final int idx = entry.key;
+      final String label = entry.value.key;
+      final double value = entry.value.value;
+      final double ratio = total > 0 ? (value / total).clamp(0.0, 1.0) : 0.0;
+      return _BarData(
+        label: label,
+        value: ratio,
+        color: palette[idx % palette.length],
+      );
+    }).toList();
 
     return Container(
       padding: const EdgeInsets.all(AppDimensions.paddingL),
@@ -207,69 +257,6 @@ class _CategoryBreakdownCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AiInsightCard extends StatefulWidget {
-  const _AiInsightCard();
-
-  @override
-  State<_AiInsightCard> createState() => _AiInsightCardState();
-}
-
-class _AiInsightCardState extends State<_AiInsightCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingL),
-      decoration: BoxDecoration(
-        color: const Color(0x261A1433),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Icon(Icons.auto_awesome, color: AppColors.accentPurple),
-              const SizedBox(width: 8),
-              const Text(
-                'AI Insight',
-                style: TextStyle(
-                  color: AppColors.accentPurple,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => setState(() => _expanded = !_expanded),
-                icon: Icon(
-                  _expanded ? Icons.expand_less : Icons.expand_more,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            _expanded
-                ? 'Your food and transport categories are carrying most of the month’s spend. Shift one weekly dine-out into a home meal and you will free up room for goals without hurting your routine.'
-                : 'Food and transport are driving most of this month’s spend. A small routine change could free up room for your goals.',
-            style: const TextStyle(color: AppColors.textPrimary, height: 1.45),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'See Full Analysis →',
-            style: TextStyle(
-              color: AppColors.accentPurple,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -348,7 +335,9 @@ class _QuickActionRow extends StatelessWidget {
 }
 
 class _GoalSnapshotCard extends StatelessWidget {
-  const _GoalSnapshotCard();
+  const _GoalSnapshotCard({required this.goals});
+
+  final List<GoalEntity> goals;
 
   @override
   Widget build(BuildContext context) {
@@ -360,8 +349,8 @@ class _GoalSnapshotCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const <Widget>[
-          Text(
+        children: <Widget>[
+          const Text(
             'Your Goals',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -369,20 +358,29 @@ class _GoalSnapshotCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 14),
-          _GoalRow(
-            emoji: '🎯',
-            title: 'Emergency Fund',
-            amount: '₹42,000 of ₹1,00,000',
-            progress: 0.42,
-          ),
-          SizedBox(height: 14),
-          _GoalRow(
-            emoji: '🏠',
-            title: 'Home Down Payment',
-            amount: '₹2,40,000 of ₹10,00,000',
-            progress: 0.24,
-          ),
+          const SizedBox(height: 14),
+          if (goals.isEmpty)
+            const Text(
+              'No active goals yet.',
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            ...goals.map((GoalEntity goal) {
+              final double progress =
+                  (goal.target > 0 ? (goal.target / (goal.target + 1)) : 0.0)
+                      .clamp(0.0, 1.0);
+              return Column(
+                children: <Widget>[
+                  _GoalRow(
+                    emoji: '🎯',
+                    title: goal.title,
+                    amount: '₹${goal.target.toStringAsFixed(0)}',
+                    progress: progress,
+                  ),
+                  const SizedBox(height: 14),
+                ],
+              );
+            }),
         ],
       ),
     );
@@ -449,93 +447,6 @@ class _GoalRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ForecastCard extends StatelessWidget {
-  const _ForecastCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingL),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusXL),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0x22F4C96B),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-            ),
-            child: const Icon(Icons.trending_up, color: AppColors.accentGold),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Next Month Forecast',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Predicted spend: ₹26,900',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          const Text(
-            '84%',
-            style: TextStyle(
-              color: AppColors.accentGold,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DailyTipBanner extends StatelessWidget {
-  const _DailyTipBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingM),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusL),
-        border: const Border(
-          left: BorderSide(color: AppColors.primary, width: 4),
-        ),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Tip of the day',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Try setting one weekly spending cap for food delivery. Small rules make budgets easier to keep.',
-            style: TextStyle(color: AppColors.textPrimary, height: 1.4),
-          ),
-        ],
-      ),
     );
   }
 }
