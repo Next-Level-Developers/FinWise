@@ -8,22 +8,25 @@ import { getLessons, type Lesson } from "@/lib/firebase/dashboard-data";
 
 export default function LessonPage() {
   const params = useParams<{ moduleId: string; lessonId: string }>();
+  const moduleId = params.moduleId || "";
+  const lessonId = params.lessonId || "";
   const [lesson, setLesson] = useState<Lesson | null>(null);
 
   useEffect(() => {
     async function loadLesson() {
-      const lessons = await getLessons(params.moduleId);
-      setLesson(lessons.find((item) => item.id === params.lessonId) || lessons[0] || null);
+      if (!moduleId) return;
+      const lessons = await getLessons(moduleId);
+      setLesson(lessons.find((item) => item.id === lessonId) || lessons[0] || null);
     }
 
     void loadLesson();
-  }, [params.lessonId, params.moduleId]);
+  }, [lessonId, moduleId]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr]">
       <div className="space-y-4">
-        <p className="text-sm text-[#9ca3af]"><Link href={`/dashboard/learn/${params.moduleId}`}>Module</Link> / {params.lessonId}</p>
-        <Panel title={(lesson?.title || params.lessonId).replace(/-/g, " ")} subtitle={`${Math.max(1, Math.round((lesson?.readTimeSec || 60) / 60))} min read`}>
+        <p className="text-sm text-[#9ca3af]"><Link href={`/dashboard/learn/${moduleId}`}>Module</Link> / {lessonId || "lesson"}</p>
+        <Panel title={(lesson?.title || lessonId || "lesson").replace(/-/g, " ")} subtitle={`${Math.max(1, Math.round((lesson?.readTimeSec || 60) / 60))} min read`}>
           <div className="space-y-3 text-sm text-[#d1d5db]">
             <p>{lesson?.content || "Lesson content not available yet."}</p>
             <div className="rounded-lg border border-[#2a2b2e] bg-[#111216] p-3"><p className="font-medium">Key formula</p><p className="font-mono">Net Pay = Gross Pay - Deductions</p></div>

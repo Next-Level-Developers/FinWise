@@ -7,6 +7,7 @@ import {
   getLatestMonthlySummary,
   getRecentTransactions,
   getUserProfile,
+  stringifyInsight,
   type MonthlySummary,
   type Transaction,
   type UserProfile,
@@ -113,7 +114,7 @@ export default function DashboardOverviewPage() {
         <Panel title={`${toCurrency(summary?.totalExpense ?? 0)} Spent`} subtitle={summary?.month ? `${summary.month} view` : "Current month"}>
           <div className="grid h-56 grid-cols-7 items-end gap-2">
             {(breakdown.length > 0 ? breakdown.slice(0, 7).map(([, value]) => Math.max(24, Math.min(180, Math.round(value / 120)))) : [120, 90, 150, 130, 110, 160, 140]).map((h, i) => (
-              <div key={i} className="rounded-t-md bg-gradient-to-t from-[#2563eb] via-[#7c3aed] to-[#db2777]" style={{ height: `${h}px` }} />
+              <div key={i} className="rounded-t-md bg-linear-to-t from-[#2563eb] via-[#7c3aed] to-[#db2777]" style={{ height: `${h}px` }} />
             ))}
           </div>
           <p className="mt-3 text-xs text-[#9ca3af]">
@@ -128,7 +129,7 @@ export default function DashboardOverviewPage() {
       </section>
 
       <Panel title="Your spending insight">
-        <p className="text-sm text-[#d1d5db]">{summary?.aiInsightSummary || "AI insight will appear here after enough transaction activity in this month."}</p>
+        <p className="text-sm text-[#d1d5db]">{stringifyInsight(summary?.aiInsightSummary) || "AI insight will appear here after enough transaction activity in this month."}</p>
       </Panel>
     </div>
   );

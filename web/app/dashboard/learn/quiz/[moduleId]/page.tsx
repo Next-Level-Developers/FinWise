@@ -6,6 +6,7 @@ import { getModuleQuiz } from "@/lib/firebase/dashboard-data";
 
 export default function QuizPage() {
   const params = useParams<{ moduleId: string }>();
+  const moduleId = params.moduleId || "";
   const [selected, setSelected] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [questionText, setQuestionText] = useState("What does net pay represent?");
@@ -19,7 +20,8 @@ export default function QuizPage() {
 
   useEffect(() => {
     async function loadQuiz() {
-      const quiz = await getModuleQuiz(params.moduleId);
+      if (!moduleId) return;
+      const quiz = await getModuleQuiz(moduleId);
       const firstQuestion = quiz?.questions?.[0];
       if (!firstQuestion) {
         return;
@@ -31,7 +33,7 @@ export default function QuizPage() {
     }
 
     void loadQuiz();
-  }, [params.moduleId]);
+  }, [moduleId]);
 
   const labels = useMemo(() => options.map((_, idx) => String.fromCharCode(65 + idx)), [options]);
 

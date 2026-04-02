@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getRecentAIChats, type AIChat } from "@/lib/firebase/dashboard-data";
+import { marked } from "marked";
+import { getRecentAIChats, sendAIChatMessage, type AIChat } from "@/lib/firebase/dashboard-data";
 import { useUserId } from "@/lib/firebase/use-user-id";
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 export default function AIChatPage() {
   const userId = useUserId();
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<AIChat[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content: "Ask me anything about your spending, budget, goals, or savings plan.",
+    },
+  ]);
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     async function loadSessions() {
@@ -20,6 +34,31 @@ export default function AIChatPage() {
 
   const topSession = useMemo(() => sessions[0], [sessions]);
 
+  async function handleSend() {
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
+
+    setError(null);
+    setInput("");
+    setIsSending(true);
+    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+
+    try {
+      const response = await sendAIChatMessage(userId, trimmed, topSession?.id, topSession?.mode || "general");
+      setMessages((prev) => [...prev, { role: "assistant", content: response.reply }]);
+      const refreshed = await getRecentAIChats(userId);
+      setSessions(refreshed);
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Failed to send message");
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "I could not respond right now. Please try again." },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
+  }
+
   return (
     <div className="grid h-[calc(100vh-130px)] gap-3 lg:grid-cols-[0.3fr_0.7fr]">
       <aside className="rounded-xl border border-[#2a2b2e] bg-[#161719] p-3">
@@ -31,13 +70,42 @@ export default function AIChatPage() {
       <section className="flex flex-col rounded-xl border border-[#2a2b2e] bg-[#161719] p-3">
         <p className="mb-2 text-xs text-[#9ca3af]">Context: {topSession?.mode || "general"} • Active chat sessions: {sessions.length}</p>
         <div className="flex-1 space-y-2 overflow-auto">
-          <div className="mr-auto max-w-[80%] rounded-xl border-l-2 border-[#4ade80] bg-[#1e2022] px-3 py-2 text-sm">You can reduce your dining spend by 15% to save around ₹1,800 this month.</div>
-          <div className="ml-auto max-w-[80%] rounded-xl bg-[#1a3a2a] px-3 py-2 text-sm">How much should I save for an emergency fund?</div>
-          <div className="mr-auto max-w-[80%] rounded-xl border-l-2 border-[#4ade80] bg-[#1e2022] px-3 py-2 text-sm">Aim for 4-6 months of expenses. Start with ₹50,000 as your first milestone.</div>
+          {messages.map((msg, idx) => (
+            <div
+              key={`${msg.role}-${idx}`}
+              className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
+                msg.role === "assistant"
+                  ? "mr-auto border-l-2 border-[#4ade80] bg-[#1e2022]"
+                  : "ml-auto bg-[#1a3a2a]"
+              }`}
+            >
+              {msg.role === "assistant" ? (
+                <div
+                  className="prose prose-invert max-w-none text-sm *:text-[#d1d5db] [&>ul]:ml-4 [&>ol]:ml-4 [&>code]:bg-[#0f0f12] [&>code]:px-1 [&>code]:rounded"
+                  dangerouslySetInnerHTML={{ __html: marked(msg.content) as string }}
+                />
+              ) : (
+                msg.content
+              )}
+            </div>
+          ))}
+          {isSending ? (
+            <div className="mr-auto max-w-[80%] rounded-xl border-l-2 border-[#4ade80] bg-[#1e2022] px-3 py-2 text-sm text-[#9ca3af]">
+              Thinking...
+            </div>
+          ) : null}
         </div>
+        {error ? <p className="mt-2 text-xs text-[#f87171]">{error}</p> : null}
         <div className="mt-3 flex gap-2">
           <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask me about your finances..." className="h-20 flex-1 rounded-lg border border-[#2a2b2e] bg-[#111216] px-3 py-2 text-sm" />
-          <button type="button" className="rounded-lg bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#0e0f11]">Send</button>
+          <button
+            type="button"
+            disabled={isSending || !input.trim()}
+            onClick={() => void handleSend()}
+            className="rounded-lg bg-[#4ade80] px-4 py-2 text-sm font-semibold text-[#0e0f11] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSending ? "Sending..." : "Send"}
+          </button>
         </div>
       </section>
     </div>

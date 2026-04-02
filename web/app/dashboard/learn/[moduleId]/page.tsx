@@ -14,13 +14,14 @@ import { useUserId } from "@/lib/firebase/use-user-id";
 
 export default function ModulePage() {
   const params = useParams<{ moduleId: string }>();
-  const moduleId = params.moduleId;
+  const moduleId = params.moduleId || "";
   const userId = useUserId();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [moduleProgress, setModuleProgress] = useState<LearningProgress | null>(null);
 
   useEffect(() => {
     async function loadModule() {
+      if (!moduleId) return;
       const [lessonData, progressData] = await Promise.all([getLessons(moduleId), getLearningProgress(userId)]);
       setLessons(lessonData);
       setModuleProgress(progressData.find((item) => item.moduleId === moduleId) || null);
